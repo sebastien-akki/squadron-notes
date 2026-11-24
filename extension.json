@@ -1,0 +1,53 @@
+{
+  "id": "notes",
+  "version": "0.1.0",
+  "api": 1,
+  "squadron": ">=0.56.0",
+  "name": { "en": "Notes", "fr": "Notes" },
+  "description": {
+    "en": "Private notes for each project, next to your agents: write them, put one in your message, and let agents read or add to them",
+    "fr": "Des notes privées pour chaque projet, à côté de vos agents : les écrire, en mettre une dans votre message, et laisser les agents les lire ou les compléter"
+  },
+  "logo": "logo.svg",
+  "wasm": "target/wasm32-wasip2/release/notes.wasm",
+  "contributes": {
+    "panels": [{ "id": "main", "title": { "en": "Notes", "fr": "Notes" }, "page": "panel/index.html" }],
+    "items": [
+      {
+        "slot": "agent.tools",
+        "id": "notes",
+        "label": { "en": "Notes", "fr": "Notes" },
+        "hint": { "en": "Your notes for this project", "fr": "Vos notes pour ce projet" },
+        "icon": "logo",
+        "words": ["notes", "note", "memo", "mémo"],
+        "action": { "panel.open": "main" }
+      }
+    ],
+    "tools": [
+      {
+        "name": "list",
+        "description": "Lists the user's private notes for this Squadron project: the id, title and date of each."
+      },
+      {
+        "name": "read",
+        "description": "Reads one of the user's private notes for this Squadron project by its id, or all of them without an id.",
+        "input": {
+          "type": "object",
+          "properties": { "id": { "type": "string", "description": "The id of the note, as notes_list gives it. Leave it out to read every note." } }
+        }
+      },
+      {
+        "name": "append",
+        "description": "Adds text at the end of one of the user's private notes for this Squadron project, or to a new note without an id. Use it only when the user asks you to note something.",
+        "input": {
+          "type": "object",
+          "properties": {
+            "text": { "type": "string", "description": "The text to add, in Markdown." },
+            "id": { "type": "string", "description": "The id of the note to add to, as notes_list gives it. Leave it out to start a new note, whose first line is its title." }
+          },
+          "required": ["text"]
+        }
+      }
+    ]
+  }
+}
