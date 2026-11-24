@@ -118,3 +118,78 @@ textarea {
   font-size: 13px;
   line-height: 1.55;
 }
+
+.pin {
+  font-size: 11px;
+}
+
+.reader {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px var(--border);
+  line-height: 1.55;
+}
+
+.reader h2,
+.reader h3,
+.reader h4 {
+  margin: 10px 0 4px;
+  color: var(--text-strong);
+}
+
+.reader h2 {
+  font-size: 16px;
+}
+
+.reader h3 {
+  font-size: 14px;
+}
+
+.reader h4 {
+  font-size: 13px;
+}
+
+.reader p {
+  margin: 0;
+}
+
+.reader .gap {
+  height: 8px;
+}
+
+.reader .task,
+.reader .item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.reader .task {
+  cursor: pointer;
+}
+
+.reader .done {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.reader code,
+.reader pre {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--surface-2);
+  border-radius: 3px;
+}
+
+.reader code {
+  padding: 0 3px;
+}
+
+.reader pre {
+  margin: 4px 0;
+  padding: 8px 10px;
+  white-space: pre-wrap;
+}

@@ -61,12 +61,12 @@ fn save(project: &str, id: &str, base: &str, text: &str) -> Result<(Note, bool),
             let saved = notes[i].clone();
             if let Some(other) = &apart {
                 let id = note::new_id(&notes, at);
-                notes.push(Note { id, text: other.clone(), at: at.saturating_sub(1) });
+                notes.push(Note { id, text: other.clone(), at: at.saturating_sub(1), pinned: false });
             }
             (saved, apart.is_some())
         }
         None => {
-            let created = Note { id: note::new_id(&notes, at), text: text.to_string(), at };
+            let created = Note { id: note::new_id(&notes, at), text: text.to_string(), at, pinned: false };
             notes.push(created.clone());
             (created, false)
         }
@@ -81,13 +81,19 @@ fn remove(project: &str, id: &str) -> Result<(), String> {
     store(project, &notes)
 }
 
+fn pin(project: &str, id: &str, pinned: bool) -> Result<(), String> {
+    let mut notes = load(project);
+    notes.iter_mut().find(|n| n.id == id).ok_or(MISSING)?.pinned = pinned;
+    store(project, &notes)
+}
+
 fn append(project: &str, id: Option<&str>, text: &str) -> Result<Note, String> {
     let mut notes = load(project);
     let at = now();
     let i = match id {
         Some(id) => notes.iter().position(|n| n.id == id).ok_or(MISSING)?,
         None => {
-            notes.push(Note { id: note::new_id(&notes, at), text: String::new(), at });
+            notes.push(Note { id: note::new_id(&notes, at), text: String::new(), at, pinned: false });
             notes.len() - 1
         }
     };
@@ -115,6 +121,10 @@ fn answer(kind: &str, agent: &Agent, message: &Value) -> Result<Value, String> {
         "delete" => {
             remove(project, &text("id"))?;
             json!({ "type": "deleted", "id": text("id"), "notes": load(project) })
+        }
+        "pin" => {
+            pin(project, &text("id"), message["pinned"].as_bool().unwrap_or(false))?;
+            json!({ "type": "pinned", "notes": load(project) })
         }
         "insert" => {
             host::insert_prompt(&agent.id, &text("text"));
@@ -150,7 +160,7 @@ impl Extension for Notes {
         let notes = load(&project);
         match name.as_str() {
             "list" if notes.is_empty() => Ok("The user has no note for this project yet.".into()),
-            "list" => Ok(notes.iter().map(|n| format!("{} — {}", n.id, note::title(&n.text))).collect::<Vec<_>>().join("\n")),
+            "list" => Ok(notes.iter().map(|n| format!("{} — {}{}", n.id, note::title(&n.text), if n.pinned { " (pinned)" } else { "" })).collect::<Vec<_>>().join("\n")),
             "read" => match id {
                 Some(id) => notes.into_iter().find(|n| n.id == id).map(|n| n.text).ok_or_else(|| english(MISSING.into())),
                 None if notes.is_empty() => Ok("The user has no note for this project yet.".into()),

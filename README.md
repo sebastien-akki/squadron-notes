@@ -6,7 +6,8 @@ Private notes for each Squadron project, next to your agents.
 
 - Click **Notes** in an agent's toolbar. The panel lists the notes of the agent's project, newest first, with a search box.
 - **New note** opens an empty note. The first line is its title. Every change is saved as you type.
-- **Put in my message** adds the note to the message you are writing to the agent.
+- **Read** shows the note with its Markdown: headings, lists, bold, code, and `- [ ]` checklists ticked with one click; **Edit** goes back to the text. **Pin** keeps a note at the top of the list. **Escape** goes back to the list.
+- **Put in my message** adds the selected text, or the whole note without a selection, to the message you are writing to the agent.
 - **Delete** asks for a second click.
 - Agents can call `notes_list`, `notes_read` and `notes_append`. Claude Code asks you before each call. When an agent adds to a note you are writing, both texts are kept.
 

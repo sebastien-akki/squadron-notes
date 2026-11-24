@@ -8,6 +8,8 @@ pub struct Note {
     pub id: String,
     pub text: String,
     pub at: u64,
+    #[serde(default)]
+    pub pinned: bool,
 }
 
 pub fn title(text: &str) -> String {
@@ -42,7 +44,7 @@ pub fn merge(saved: &str, base: &str, mine: &str) -> (String, Option<String>) {
 }
 
 pub fn sorted(mut notes: Vec<Note>) -> Vec<Note> {
-    notes.sort_by(|a, b| b.at.cmp(&a.at));
+    notes.sort_by(|a, b| b.pinned.cmp(&a.pinned).then(b.at.cmp(&a.at)));
     notes
 }
 
@@ -51,7 +53,7 @@ mod tests {
     use super::*;
 
     fn note(id: &str, at: u64) -> Note {
-        Note { id: id.into(), text: String::new(), at }
+        Note { id: id.into(), text: String::new(), at, pinned: false }
     }
 
     #[test]
@@ -84,5 +86,15 @@ mod tests {
     fn newest_first() {
         let ids: Vec<String> = sorted(vec![note("old", 1), note("new", 3), note("mid", 2)]).into_iter().map(|n| n.id).collect();
         assert_eq!(ids, ["new", "mid", "old"]);
+    }
+
+    #[test]
+    fn pinned_first_and_old_notes_still_load() {
+        let mut old = note("old", 1);
+        old.pinned = true;
+        let ids: Vec<String> = sorted(vec![note("new", 3), old]).into_iter().map(|n| n.id).collect();
+        assert_eq!(ids, ["old", "new"]);
+        let saved: Vec<Note> = serde_json::from_str(r#"[{"id":"a","text":"t","at":1}]"#).unwrap();
+        assert!(!saved[0].pinned);
     }
 }

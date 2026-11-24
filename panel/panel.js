@@ -21,6 +21,13 @@ const T = fr
       apart: 'La note avait changé ailleurs : l’autre version est gardée dans une note à part.',
       full: 'Non enregistrée : l’espace de 1 Mo que Squadron garde pour Notes est plein. Supprimez de vieilles notes.',
       long: 'Non enregistrée : une note fait 100 000 caractères au plus.',
+      pin: 'Épingler',
+      unpin: 'Désépingler',
+      pinned: 'Épinglée',
+      read: 'Lire',
+      write: 'Modifier',
+      readEmpty: 'Note vide.',
+      insertHint: 'La sélection, ou toute la note sans sélection',
     }
   : {
       loading: 'Loading…',
@@ -40,11 +47,18 @@ const T = fr
       apart: 'The note had changed elsewhere: the other version is kept as a note of its own.',
       full: 'Not saved: the 1 MB Squadron keeps for Notes is full. Delete old notes.',
       long: 'Not saved: a note holds 100,000 characters at most.',
+      pin: 'Pin',
+      unpin: 'Unpin',
+      pinned: 'Pinned',
+      read: 'Read',
+      write: 'Edit',
+      readEmpty: 'Empty note.',
+      insertHint: 'The selection, or the whole note without one',
     }
 
 const send = (type, extra = {}) => squadron.send({ ...extra, type, to: me })
 
-const state = { project: null, notes: null, filter: '' }
+const state = { project: null, notes: null, filter: '', read: false }
 let ed = null
 const pending = {}
 let seq = 0
@@ -103,7 +117,11 @@ function flush(e = ed) {
 }
 
 function typed() {
-  ed.text = box.value
+  setText(box.value)
+}
+
+function setText(text) {
+  ed.text = text
   ed.confirm = 0
   say(T.saving)
   clearTimeout(ed.timer)
@@ -112,9 +130,10 @@ function typed() {
 
 function open(note) {
   flush()
+  if (!note) state.read = false
   ed = { id: note ? note.id : '', base: note ? note.text : '', text: note ? note.text : '', status: '', error: false, confirm: 0 }
   render()
-  box.focus()
+  if (box) box.focus()
 }
 
 function back() {
@@ -136,7 +155,8 @@ function remove() {
 }
 
 function setBox(text) {
-  if (!box || box.value === text) return
+  if (!box) return ed && state.read ? render() : undefined
+  if (box.value === text) return
   const [a, b] = [box.selectionStart, box.selectionEnd]
   box.value = text
   box.setSelectionRange(a, b)
@@ -206,7 +226,7 @@ function items(shown) {
         h(
           'button',
           { className: 'note', onclick: () => open(n) },
-          h('span', { className: 'title' }, title(n.text)),
+          h('span', { className: 'title' }, n.pinned && h('span', { className: 'pin', title: T.pinned, 'aria-label': T.pinned }, '📌 '), title(n.text)),
           h('span', { className: 'when muted' }, when(n.at)),
           preview(n.text) && h('span', { className: 'preview muted' }, preview(n.text)),
         ),
@@ -215,20 +235,55 @@ function items(shown) {
   )
 }
 
+function chosen() {
+  const part = box ? box.value.slice(box.selectionStart, box.selectionEnd) : String(getSelection())
+  return part.trim() ? part : ed.text
+}
+
+function reader() {
+  const span = (s) => Md.inline(s).map((p) => (p.kind === 'code' ? h('code', {}, p.text) : p.kind === 'bold' ? h('strong', {}, p.text) : p.text))
+  const indent = (b) => `margin-left: ${b.depth * 8}px`
+  const block = (b) => {
+    switch (b.kind) {
+      case 'head':
+        return h(b.level === 1 ? 'h2' : b.level === 2 ? 'h3' : 'h4', {}, span(b.text))
+      case 'task':
+        return h(
+          'label',
+          { className: 'task', style: indent(b) },
+          h('input', { type: 'checkbox', checked: b.done, onchange: () => { setText(Md.toggle(ed.text, b.line)); render() } }),
+          h('span', { className: b.done ? 'done' : '' }, span(b.text)),
+        )
+      case 'item':
+        return h('div', { className: 'item', style: indent(b) }, h('span', { className: 'mark muted' }, b.mark), h('span', {}, span(b.text)))
+      case 'code':
+        return h('pre', {}, b.text)
+      case 'text':
+        return h('p', {}, span(b.text))
+      default:
+        return h('div', { className: 'gap' })
+    }
+  }
+  return h('div', { className: 'reader' }, ed.text.trim() ? Md.parse(ed.text).map(block) : h('p', { className: 'muted' }, T.readEmpty))
+}
+
 function editorView() {
-  box = h('textarea', { value: ed.text, placeholder: T.placeholder, spellcheck: true, oninput: typed, onblur: () => flush(), 'aria-label': title(ed.text) })
+  box = state.read ? null : h('textarea', { value: ed.text, placeholder: T.placeholder, spellcheck: true, oninput: typed, onblur: () => flush(), 'aria-label': title(ed.text) })
   status = h('span', { className: ed.error ? 'status error' : 'status muted', role: 'status' }, ed.status)
   const confirming = ed.confirm && Date.now() - ed.confirm <= 4000
+  const pinned = !!(state.notes.find((n) => n.id === ed.id) || {}).pinned
   return [
     h(
       'header',
       { className: 'bar' },
       h('button', { className: 'back', onclick: back }, `← ${T.back}`),
       status,
-      h('button', { onclick: () => box.value.trim() && send('insert', { text: box.value }) }, T.insert),
+      h('button', { onclick: () => { flush(); state.read = !state.read; render(); if (box) box.focus() } }, state.read ? T.write : T.read),
+      h('button', { disabled: !ed.id, 'aria-pressed': String(pinned), onclick: () => send('pin', { id: ed.id, pinned: !pinned }) }, pinned ? T.unpin : T.pin),
+      h('button', { title: T.insertHint, onclick: () => chosen().trim() && send('insert', { text: chosen() }) }, T.insert),
       h('button', { className: confirming ? 'danger' : '', onclick: remove }, confirming ? T.confirm : T.remove),
     ),
-    box,
+    box || reader(),
   ]
 }
 
@@ -260,6 +315,9 @@ squadron.on((msg) => {
     case 'deleted':
       state.notes = msg.notes
       return ed ? undefined : render()
+    case 'pinned':
+      state.notes = msg.notes
+      return render()
     case 'inserted':
       return say(T.inserted)
     case 'error': {
@@ -275,6 +333,7 @@ squadron.on((msg) => {
   }
 })
 
+addEventListener('keydown', (e) => e.key === 'Escape' && ed && back())
 addEventListener('pagehide', () => flush())
 document.addEventListener('visibilitychange', () => document.hidden && flush())
 render()
